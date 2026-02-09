@@ -100,7 +100,7 @@ static MemTxResult ufs_addr_read(UfsHc *u, hwaddr addr, void *buf, int size)
         return MEMTX_DECODE_ERROR;
     }
 
-    return pci_dma_read(PCI_DEVICE(u), addr, buf, size);
+    return address_space_read(&address_space_memory, addr, MEMTXATTRS_UNSPECIFIED, buf, size);
 }
 
 static MemTxResult ufs_addr_write(UfsHc *u, hwaddr addr, const void *buf,
@@ -115,7 +115,8 @@ static MemTxResult ufs_addr_write(UfsHc *u, hwaddr addr, const void *buf,
         return MEMTX_DECODE_ERROR;
     }
 
-    return pci_dma_write(PCI_DEVICE(u), addr, buf, size);
+    return address_space_write(&address_space_memory, addr, MEMTXATTRS_UNSPECIFIED, buf, size);
+
 }
 
 static inline hwaddr ufs_get_utrd_addr(UfsHc *u, uint32_t slot)
@@ -220,7 +221,9 @@ static MemTxResult ufs_dma_read_prdt(UfsRequest *req)
     }
 
     req->sg = g_malloc0(sizeof(QEMUSGList));
-    pci_dma_sglist_init(req->sg, PCI_DEVICE(u), prdt_len);
+    //qemu_sglist_init(req->sg, u->dma_as ?: &address_space_memory, prdt_len);
+    qemu_sglist_init(req->sg, DEVICE(u), prdt_len, &address_space_memory);
+    // pci_dma_sglist_init(req->sg, PCI_DEVICE(u), prdt_len);
     req->data_len = 0;
 
     for (uint16_t i = 0; i < prdt_len; ++i) {
@@ -314,14 +317,12 @@ static MemTxResult ufs_dma_write_upiu(UfsRequest *req)
 
 static void ufs_irq_check(UfsHc *u)
 {
-    PCIDevice *pci = PCI_DEVICE(u);
-
     if ((u->reg.is & UFS_INTR_MASK) & u->reg.ie) {
         trace_ufs_irq_raise();
-        pci_irq_assert(pci);
+        qemu_irq_raise(u->irq);  // 触发中断（替代pci_irq_assert）
     } else {
         trace_ufs_irq_lower();
-        pci_irq_deassert(pci);
+        qemu_irq_lower(u->irq);  // 关闭中断（替代pci_irq_deassert）
     }
 }
 
@@ -1647,19 +1648,6 @@ static bool ufs_check_constraints(UfsHc *u)
     return true;
 }
 
-// static void ufs_init_pci(UfsHc *u, PCIDevice *pci_dev)
-// {
-//     uint8_t *pci_conf = pci_dev->config;
-
-//     pci_conf[PCI_INTERRUPT_PIN] = 1;
-//     pci_config_set_prog_interface(pci_conf, 0x1);
-
-//     memory_region_init_io(&u->iomem, OBJECT(u), &ufs_mmio_ops, u, "ufs",
-//                           u->reg_size);
-//     pci_register_bar(pci_dev, 0, PCI_BASE_ADDRESS_SPACE_MEMORY, &u->iomem);
-//     u->irq = pci_allocate_irq(pci_dev);
-// }
-
 // 新增系统总线初始化函数
 static void ufs_init_sysbus(UfsHc *u, SysBusDevice *sbd)
 {
@@ -1819,37 +1807,11 @@ static void ufs_realize(SysBusDevice *sbd)
     ufs_init_wlu(&u->rpmb_wlu, UFS_UPIU_RPMB_WLUN);
 }
 
-// static void ufs_exit(PCIDevice *pci_dev)
-// {
-//     UfsHc *u = UFS(pci_dev);
-
-//     qemu_free_irq(u->irq);
-
-//     qemu_bh_delete(u->doorbell_bh);
-//     qemu_bh_delete(u->complete_bh);
-
-//     for (int i = 0; i < u->params.nutrs; i++) {
-//         ufs_clear_req(&u->req_list[i]);
-//     }
-//     g_free(u->req_list);
-
-//     for (int i = 0; i < ARRAY_SIZE(u->sq); i++) {
-//         if (u->sq[i]) {
-//             ufs_mcq_delete_sq(u, i);
-//         }
-//     }
-//     for (int i = 0; i < ARRAY_SIZE(u->cq); i++) {
-//         if (u->cq[i]) {
-//             ufs_mcq_delete_cq(u, i);
-//         }
-//     }
-// }
-
 static const Property ufs_props[] = {
     DEFINE_PROP_STRING("serial", UfsHc, params.serial),
     DEFINE_PROP_UINT8("nutrs", UfsHc, params.nutrs, 32),
     DEFINE_PROP_UINT8("nutmrs", UfsHc, params.nutmrs, 8),
-    DEFINE_PROP_BOOL("mcq", UfsHc, params.mcq, false),
+    DEFINE_PROP_BOOL("mcq", UfsHc, params.mcq, true),
     DEFINE_PROP_UINT8("mcq-maxq", UfsHc, params.mcq_maxq, 2),
 };
 

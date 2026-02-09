@@ -16,6 +16,7 @@
 #include "block/ufs.h"
 #include "hw/core/sysbus.h"
 
+
 #define UFS_MAX_LUS 32
 #define UFS_MAX_MCQ_QNUM 32
 #define UFS_BLOCK_SIZE_SHIFT 12
