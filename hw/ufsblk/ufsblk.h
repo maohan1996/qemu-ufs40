@@ -1,13 +1,3 @@
-/*
- * QEMU UFS
- *
- * Copyright (c) 2023 Samsung Electronics Co., Ltd. All rights reserved.
- *
- * Written by Jeuk Kim <jeuk20.kim@samsung.com>
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
-
 #ifndef HW_UFS_UFS_H
 #define HW_UFS_UFS_H
 

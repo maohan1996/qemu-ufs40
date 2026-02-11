@@ -1,9 +1,9 @@
 /*
  * QEMU UFS Logical Unit
  *
- * Copyright (c) 2023 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2026 unisoc Electronics Co., Ltd. All rights reserved.
  *
- * Written by Jeuk Kim <jeuk20.kim@samsung.com>
+ * Written by han.mao <han.mao@unisoc.com>
  *
  * This code is licensed under the GNU GPL v2 or later.
  */

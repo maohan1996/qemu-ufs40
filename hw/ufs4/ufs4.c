@@ -1,9 +1,9 @@
 /*
  * QEMU Universal Flash Storage (UFS) Controller
  *
- * Copyright (c) 2023 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2026 unisoc Electronics Co., Ltd. All rights reserved.
  *
- * Written by Jeuk Kim <jeuk20.kim@samsung.com>
+ * Written by han.mao <han.mao@unisoc.com>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
