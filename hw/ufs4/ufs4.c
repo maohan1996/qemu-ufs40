@@ -826,10 +826,10 @@ static void ufs_mmio_write(void *opaque, hwaddr addr, uint64_t data,
     trace_ufs_mmio_write(addr, data, size);
 
     if (addr + size <= sizeof(u->reg)) {
-        ufs_write_reg(u, addr, data, size);
-    } else if (ufs_is_mcq_reg(u, addr, size)) {
+        ufs_write_reg(u, addr, data, size); //正常寄存器地址，从00开始一直到MCQ config
+    } else if (ufs_is_mcq_reg(u, addr, size)) { //SQ config reg等的地址
         ufs_write_mcq_reg(u, addr - ufs_mcq_reg_addr(u, 0), data, size);
-    } else if (ufs_is_mcq_op_reg(u, addr, size)) {
+    } else if (ufs_is_mcq_op_reg(u, addr, size)) { //SQ Head pointer等的地址
         ufs_write_mcq_op_reg(u, addr - ufs_mcq_op_reg_addr(u, 0), data, size);
     } else {
         trace_ufs_err_invalid_register_offset(addr);
