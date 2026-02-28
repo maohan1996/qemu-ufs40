@@ -637,11 +637,11 @@ static void vexpress_common_init(MachineState *machine)
     sysbus_connect_irq(ufsblk_sbd, 0, pic[52]); 
 
     ufs4_dev = qdev_new(TYPE_UFS);
-    sysbus_realize_and_unref(SYS_BUS_DEVICE(ufs4_dev), &error_fatal);
+    sysbus_realize_and_unref(SYS_BUS_DEVICE(ufs4_dev), &error_fatal);//这一步就能调用到 TypeInfo 里的 instance_init
     ufs4_sbd = SYS_BUS_DEVICE(ufs4_dev);
     qemu_printf("ufs4_sbd->num_mmio = %x\n", ufs4_sbd->num_mmio);
-    sysbus_mmio_map(ufs4_sbd, 0, 0x22000000);
-    sysbus_connect_irq(ufs4_sbd, 0, pic[53]); 
+    sysbus_mmio_map(ufs4_sbd, 0, 0x22000000); //这里是为host创建一个基地址
+    sysbus_connect_irq(ufs4_sbd, 0, pic[53]); //这里是给host指定一个中断号，这个数组的下标就是SPI的中断号
 
 
     pl041 = qdev_new("pl041");
