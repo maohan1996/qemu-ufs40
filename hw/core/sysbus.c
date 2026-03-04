@@ -22,6 +22,7 @@
 #include "hw/core/sysbus.h"
 #include "monitor/monitor.h"
 #include "system/address-spaces.h"
+#include "qemu/qemu-print.h"
 
 static void sysbus_dev_print(Monitor *mon, DeviceState *dev, int indent);
 static char *sysbus_get_fw_dev_path(DeviceState *dev);

@@ -93,6 +93,9 @@
 #include "hw/cxl/cxl.h"
 #include "hw/cxl/cxl_host.h"
 #include "qemu/guest-random.h"
+#include "hw/ufsblk/ufsblk.h"
+#include "qemu/qemu-print.h"
+#include "hw/ufs4/ufs4.h"
 
 static GlobalProperty arm_virt_compat[] = {
     { TYPE_VIRTIO_IOMMU_PCI, "aw-bits", "48" },
@@ -196,7 +199,8 @@ static const MemMapEntry base_memmap[] = {
     [VIRT_ACPI_PCIHP] =         { 0x090c0000, ACPI_PCIHP_SIZE },
     [VIRT_MMIO] =               { 0x0a000000, 0x00000200 },
     /* ...repeating for a total of NUM_VIRTIO_TRANSPORTS, each of that size */
-    [VIRT_PLATFORM_BUS] =       { 0x0c000000, 0x02000000 },
+    [VIRT_PLATFORM_BUS] =       { 0x0c000000, 0x01000000 },
+    [VIRT_UFS] =                { 0x0d000000, 0x01000000 },//从VIRT_PLATFORM_BUS截一片地址给ufs
     [VIRT_SECURE_MEM] =         { 0x0e000000, 0x01000000 },
     [VIRT_PCIE_MMIO] =          { 0x10000000, 0x2eff0000 },
     [VIRT_PCIE_PIO] =           { 0x3eff0000, 0x00010000 },
@@ -238,6 +242,7 @@ static MemMapEntry extended_memmap[] = {
     /* Any CXL Fixed memory windows come here */
 };
 
+//中断号分布情况
 static const int a15irqmap[] = {
     [VIRT_UART0] = 1,
     [VIRT_RTC] = 2,
@@ -249,6 +254,7 @@ static const int a15irqmap[] = {
     [VIRT_GIC_V2M] = 48, /* ...to 48 + NUM_GICV2M_SPIS - 1 */
     [VIRT_SMMU] = 74,    /* ...to 74 + NUM_SMMU_IRQS - 1 */
     [VIRT_PLATFORM_BUS] = 112, /* ...to 112 + PLATFORM_BUS_NUM_IRQS -1 */
+    [VIRT_UFS] = 112 + PLATFORM_BUS_NUM_IRQS + 10,
 };
 
 static void create_randomness(MachineState *ms, const char *node)
@@ -1120,6 +1126,24 @@ static void create_secure_gpio_pwr(char *fdt, DeviceState *pl061_dev,
     qemu_fdt_setprop_string(fdt, "/gpio-restart", "status", "disabled");
     qemu_fdt_setprop_string(fdt, "/gpio-restart", "secure-status",
                             "okay");
+}
+
+static void create_ufs40_devices(const VirtMachineState *vms)
+{
+    // 创建自定义UFS 4.0块设备
+    DeviceState *ufs4_dev;
+    SysBusDevice *ufs4_sbd;
+    int irq = vms->irqmap[VIRT_UFS];
+
+    qemu_printf("ufs irq num = %d !!!\n", irq);
+    qemu_printf("ufs base addr = 0x%lx , size = 0x%lx !!!\n", vms->memmap[VIRT_UFS].base, vms->memmap[VIRT_UFS].size);
+
+    ufs4_dev = qdev_new(TYPE_UFS);
+    sysbus_realize_and_unref(SYS_BUS_DEVICE(ufs4_dev), &error_fatal);//这一步就能调用到 TypeInfo 里的 instance_init
+    ufs4_sbd = SYS_BUS_DEVICE(ufs4_dev);
+    qemu_printf("ufs4_sbd->num_mmio = %x\n", ufs4_sbd->num_mmio);
+    sysbus_mmio_map(ufs4_sbd, 0, vms->memmap[VIRT_UFS].base); //这里是为host创建一个基地址
+    sysbus_connect_irq(ufs4_sbd, 0, qdev_get_gpio_in(vms->gic, irq)); //这里是给host指定一个中断号，这个数组的下标就是SPI的中断号
 }
 
 static void create_gpio_devices(const VirtMachineState *vms, int gpio,
@@ -2222,6 +2246,8 @@ static void machvirt_init(MachineState *machine)
 
     possible_cpus = mc->possible_cpu_arch_ids(machine);
 
+    qemu_printf("enter in machvirt_init\n\n");
+
     /*
      * In accelerated mode, the memory map is computed earlier in kvm_type()
      * for Linux, or hvf_get_physical_address_range() for macOS to create a
@@ -2526,6 +2552,8 @@ static void machvirt_init(MachineState *machine)
     if (vms->secure && !vmc->no_secure_gpio) {
         create_gpio_devices(vms, VIRT_SECURE_GPIO, secure_sysmem);
     }
+
+    create_ufs40_devices(vms);
 
      /* connect powerdown request */
      vms->powerdown_notifier.notify = virt_powerdown_req;
