@@ -60,8 +60,8 @@ ufs host已经被挂到了sysbus上，所以：
         dtc -I dts -O dtb -o virto.dtb virto.dts
 
     若想支持ufs，需加入如下代码在dts(放到CPU后面就行)：
-    ufs40: ufs40@d000000 {
-		compatible = "ufshcd-ufs40";
+    ufs: ufs@d000000 {
+		compatible = "ufs-qemu";
 		reg = <0x00 0xd000000 0x00 0x2000>;
 		interrupts = <0 186 1>;
 	};
